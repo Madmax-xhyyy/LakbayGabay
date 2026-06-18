@@ -11,3 +11,143 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ReportType {
+  FARE_UPDATE
+  ROUTE_CHANGE
+  NEW_ROUTE
+}
+
+enum ReportStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id       String  @id @default(cuid())
+  email    String  @unique
+  password String
+  name     String?
+  role     Role    @default(USER)
+
+  reports Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TransportType {
+  id   String @id @default(cuid())
+  name String @unique
+
+  routes Route[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Route {
+  id String @id @default(cuid())
+
+  name String
+
+  origin      String
+  destination String
+
+  transportTypeId String
+  transportType   TransportType @relation(fields: [transportTypeId], references: [id])
+
+  stops     RouteStop[]
+  fares     Fare[]
+  terminals RouteTerminal[]
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reports   Report[]
+}
+
+model RouteStop {
+  id String @id @default(cuid())
+
+  name String
+
+  stopOrder Int
+
+  latitude  Float?
+  longitude Float?
+
+  routeId String
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Fare {
+  id String @id @default(cuid())
+
+  routeId String
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  amount Decimal @db.Decimal(10, 2)
+
+  confidence Int @default(1)
+
+  createdAt DateTime @default(now())
+}
+
+model Terminal {
+  id String @id @default(cuid())
+
+  name String
+  city String
+
+  latitude  Float?
+  longitude Float?
+
+  routes RouteTerminal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RouteTerminal {
+  id String @id @default(cuid())
+
+  routeId String
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  terminalId String
+  terminal   Terminal @relation(fields: [terminalId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([routeId, terminalId])
+}
+
+model Report {
+  id String @id @default(cuid())
+
+  type ReportType
+
+  description String
+
+  status ReportStatus @default(PENDING)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  routeId String?
+  route   Route?  @relation(fields: [routeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
